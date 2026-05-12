@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时赚钱计数器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            background: #f5f5f7;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .page {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 32px 48px;
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 40px;
+            font-weight: 700;
+            color: #1d1d1f;
+            letter-spacing: -0.02em;
+        }
+
+        /* Main content */
+        .content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            grid-template-rows: 1fr auto;
+            gap: 16px;
+            min-height: 0;
+        }
+
+        /* Left: Settings */
+        .settings {
+            grid-row: 1 / 3;
+            background: #fff;
+            border-radius: 20px;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #86868b;
+            margin-bottom: 12px;
+            margin-top: 16px;
+        }
+
+        .section-label:first-child { margin-top: 0; }
+
+        .field {
+            margin-bottom: 12px;
+        }
+
+        .field label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: #6e6e73;
+            margin-bottom: 4px;
+        }
+
+        .field-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .field input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #e5e5ea;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .field input:focus {
+            border-color: #0071e3;
+        }
+
+        .field .unit {
+            font-size: 12px;
+            color: #86868b;
+            white-space: nowrap;
+        }
+
+        .divider {
+            height: 1px;
+            background: #e5e5ea;
+            margin: 16px 0;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 12px;
+        }
+        .info-item .lbl { color: #86868b; }
+        .info-item .val { color: #1d1d1f; font-weight: 500; }
+
+        /* Right top: Main display */
+        .main-display {
+            background: #fff;
+            border-radius: 20px;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 14px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+        .status-pill.active { background: #e8f8e8; color: #1a7a1a; }
+        .status-pill.idle { background: #f0f0f0; color: #86868b; }
+
+        .status-dot {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .money-big {
+            font-size: 64px;
+            font-weight: 700;
+            color: #1d1d1f;
+            letter-spacing: -0.03em;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .money-big.dimmed { opacity: 0.2; }
+
+        .money-sub {
+            font-size: 13px;
+            color: #86868b;
+            margin-bottom: 28px;
+        }
+
+        .progress-bar-wrap {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .progress-top {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #86868b;
+            margin-bottom: 6px;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 6px;
+            background: #f0f0f0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #0071e3;
+            border-radius: 3px;
+            transition: width 1s linear;
+        }
+
+        /* Right bottom: Stats row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .stat-tile {
+            background: #fff;
+            border-radius: 16px;
+            padding: 18px;
+        }
+
+        .stat-tile .tile-label {
+            font-size: 11px;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+
+        .stat-tile .tile-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1d1d1f;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-tile .tile-sub {
+            font-size: 11px;
+            color: #86868b;
+            margin-top: 3px;
+        }
+
+        .stat-tile.accent {
+            background: #1d1d1f;
+        }
+        .stat-tile.accent .tile-label { color: #999; }
+        .stat-tile.accent .tile-value { color: #fff; }
+        .stat-tile.accent .tile-sub { color: #777; }
+
+        /* Responsive */
+        @media (max-width: 960px) {
+            .page { padding: 20px; }
+            .content {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+                overflow-y: auto;
+            }
+            .settings { grid-row: auto; }
+            .money-big { font-size: 40px; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            body { overflow: auto; height: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <h1>实时赚钱计数器.</h1>
+        </div>
+
+        <div class="content">
+            <!-- Left: Settings -->
+            <div class="settings">
+                <div class="section-label">基本设置</div>
+                <div class="field">
+                    <label>月薪</label>
+                    <div class="field-row">
+                        <input type="number" id="salary" placeholder="月薪" oninput="onSettingsChange()" />
+                        <span class="unit">元</span>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>工作时长</label>
+                    <div class="field-row">
+                        <input type="number" id="hours" value="8" oninput="onSettingsChange()" />
+                        <span class="unit">时/天</span>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>上班时间</label>
+                    <input type="time" id="startTime" value="09:00" oninput="onSettingsChange()" />
+                </div>
+                <div class="field">
+                    <label>发薪日</label>
+                    <div class="field-row">
+                        <input type="number" id="payDay" placeholder="15" min="1" max="31" oninput="onSettingsChange()" />
+                        <span class="unit">号</span>
+                    </div>
+                </div>
+
+                <div class="section-label">补充收入（选填）</div>
+                <div class="field">
+                    <label>补充公积金</label>
+                    <div class="field-row">
+                        <input type="number" id="housingFund" placeholder="0" oninput="onSettingsChange()" />
+                        <span class="unit">元/月</span>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>餐补</label>
+                    <div class="field-row">
+                        <input type="number" id="mealAllowance" placeholder="0" oninput="onSettingsChange()" />
+                        <span class="unit">元/月</span>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>13薪</label>
+                    <div class="field-row">
+                        <input type="number" id="bonus13" placeholder="0" oninput="onSettingsChange()" />
+                        <span class="unit">元/年</span>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+                <div class="info-item"><span class="lbl">本月工作日</span><span class="val" id="infoWorkdays">--</span></div>
+                <div class="info-item"><span class="lbl">日薪</span><span class="val" id="infoDailySalary">--</span></div>
+                <div class="info-item"><span class="lbl">时薪</span><span class="val" id="infoHourlySalary">--</span></div>
+                <div class="info-item"><span class="lbl">秒薪</span><span class="val" id="infoSecondSalary">--</span></div>
+            </div>
+
+            <!-- Right top: Main -->
+            <div class="main-display">
+                <div class="status-pill idle" id="status">
+                    <span class="status-dot"></span>
+                    <span id="statusText">输入月薪开始</span>
+                </div>
+                <div class="money-big dimmed" id="money">¥0.0000</div>
+                <div class="money-sub">今日实时收入</div>
+                <div class="progress-bar-wrap">
+                    <div class="progress-top">
+                        <span>今日进度</span>
+                        <span id="progressText">0.0%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right bottom: Stats -->
+            <div class="stats-row">
+                <div class="stat-tile">
+                    <div class="tile-label">今日已赚</div>
+                    <div class="tile-value" id="todayTotal">¥0</div>
+                    <div class="tile-sub" id="todayDetail">--</div>
+                </div>
+                <div class="stat-tile">
+                    <div class="tile-label">当月累计</div>
+                    <div class="tile-value" id="monthlyAmount">¥0</div>
+                    <div class="tile-sub" id="monthlyDetail">--</div>
+                </div>
+                <div class="stat-tile accent">
+                    <div class="tile-label">年度累计</div>
+                    <div class="tile-value" id="yearlyAmount">¥0</div>
+                    <div class="tile-sub" id="yearlyDetail">--</div>
+                </div>
+                <div class="stat-tile">
+                    <div class="tile-label">距发薪日</div>
+                    <div class="tile-value" id="payDayCount">--</div>
+                    <div class="tile-sub" id="payDayDetail">--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const holidays = [
+            '2025-01-01',
+            '2025-01-28','2025-01-29','2025-01-30','2025-01-31','2025-02-01','2025-02-02','2025-02-03','2025-02-04',
+            '2025-04-04','2025-04-05','2025-04-06',
+            '2025-05-01','2025-05-02','2025-05-03','2025-05-04','2025-05-05',
+            '2025-05-31','2025-06-01','2025-06-02',
+            '2025-10-01','2025-10-02','2025-10-03','2025-10-04','2025-10-05','2025-10-06','2025-10-07','2025-10-08',
+            '2026-01-01','2026-01-02','2026-01-03',
+            '2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20','2026-02-21','2026-02-22','2026-02-23','2026-02-24',
+            '2026-04-05','2026-04-06','2026-04-07',
+            '2026-05-01','2026-05-02','2026-05-03','2026-05-04','2026-05-05',
+            '2026-06-19','2026-06-20','2026-06-21',
+            '2026-10-01','2026-10-02','2026-10-03','2026-10-04','2026-10-05','2026-10-06','2026-10-07','2026-10-08',
+        ];
+        const workWeekends = [
+            '2025-01-26','2025-02-08','2025-04-27','2025-09-28','2025-10-11',
+            '2026-02-14','2026-02-28','2026-10-10',
+        ];
+
+        let timer = null;
+
+        function formatDate(d) {
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+        function isWorkday(d) {
+            const s = formatDate(d);
+            if (holidays.includes(s)) return false;
+            if (workWeekends.includes(s)) return true;
+            const day = d.getDay();
+            return day !== 0 && day !== 6;
+        }
+        function getWorkdaysInMonth(y, m) {
+            let c = 0;
+            for (let d = 1; d <= new Date(y, m+1, 0).getDate(); d++)
+                if (isWorkday(new Date(y, m, d))) c++;
+            return c;
+        }
+        function getWorkedDays(today) {
+            let c = 0;
+            for (let d = 1; d < today.getDate(); d++)
+                if (isWorkday(new Date(today.getFullYear(), today.getMonth(), d))) c++;
+            return c;
+        }
+        function getDaysUntilPayDay(payDay) {
+            const now = new Date();
+            const today = now.getDate();
+            const thisMonth = now.getMonth();
+            const thisYear = now.getFullYear();
+            if (today < payDay) {
+                return payDay - today;
+            } else if (today === payDay) {
+                return 0;
+            } else {
+                const nextMonth = thisMonth === 11 ? 0 : thisMonth + 1;
+                const nextYear = thisMonth === 11 ? thisYear + 1 : thisYear;
+                const daysInThisMonth = new Date(thisYear, thisMonth + 1, 0).getDate();
+                return (daysInThisMonth - today) + payDay;
+            }
+        }
+
+        function getConfig() {
+            return {
+                salary: parseFloat(document.getElementById('salary').value) || 0,
+                hours: parseFloat(document.getElementById('hours').value) || 8,
+                startTime: document.getElementById('startTime').value || '09:00',
+                housingFund: parseFloat(document.getElementById('housingFund').value) || 0,
+                mealAllowance: parseFloat(document.getElementById('mealAllowance').value) || 0,
+                bonus13: parseFloat(document.getElementById('bonus13').value) || 0,
+                payDay: parseInt(document.getElementById('payDay').value) || 15,
+            };
+        }
+
+        function onSettingsChange() {
+            const config = getConfig();
+            localStorage.setItem('moneyConfig', JSON.stringify(config));
+            if (config.salary > 0) {
+                if (!timer) timer = setInterval(updateDisplay, 100);
+                updateInfo(config);
+                updateDisplay();
+            }
+        }
+
+        function updateInfo(config) {
+            const now = new Date();
+            const workdays = getWorkdaysInMonth(now.getFullYear(), now.getMonth());
+            const monthlyIncome = config.salary + config.housingFund + config.mealAllowance;
+            const daily = monthlyIncome / workdays;
+            const hourly = daily / config.hours;
+            const perSecond = hourly / 3600;
+            document.getElementById('infoWorkdays').textContent = `${workdays} 天`;
+            document.getElementById('infoDailySalary').textContent = `¥${daily.toFixed(2)}`;
+            document.getElementById('infoHourlySalary').textContent = `¥${hourly.toFixed(2)}`;
+            document.getElementById('infoSecondSalary').textContent = `¥${perSecond.toFixed(4)}`;
+        }
+
+        function updateDisplay() {
+            const config = getConfig();
+            if (config.salary <= 0) return;
+            const now = new Date();
+            const workdays = getWorkdaysInMonth(now.getFullYear(), now.getMonth());
+            const monthlyIncome = config.salary + config.housingFund + config.mealAllowance;
+            const dailySalary = monthlyIncome / workdays;
+            const secondSalary = dailySalary / (config.hours * 3600);
+            const todayIsWorkday = isWorkday(now);
+
+            const [startH, startM] = config.startTime.split(':').map(Number);
+            const startOfWork = new Date(now); startOfWork.setHours(startH, startM, 0, 0);
+            const endOfWork = new Date(startOfWork); endOfWork.setHours(startH + config.hours, startM, 0, 0);
+
+            let todayEarned = 0, progress = 0, statusText = '', isActive = false;
+
+            if (!todayIsWorkday) { statusText = '今天不上班 🎉'; }
+            else if (now < startOfWork) { statusText = '还没到上班时间'; }
+            else if (now >= endOfWork) { todayEarned = dailySalary; progress = 100; statusText = '今天下班了 ✓'; }
+            else {
+                const elapsed = (now - startOfWork) / 1000;
+                todayEarned = elapsed * secondSalary;
+                progress = Math.min(100, (elapsed / (config.hours * 3600)) * 100);
+                statusText = `赚钱中 · +¥${secondSalary.toFixed(4)}/秒`;
+                isActive = true;
+            }
+
+            const workedDays = getWorkedDays(now);
+            const monthlyTotal = workedDays * dailySalary + (todayIsWorkday ? todayEarned : 0);
+            const currentMonth = now.getMonth();
+            const yearlyTotal = currentMonth * monthlyIncome + monthlyTotal + config.bonus13;
+
+            // Pay day countdown
+            const daysUntil = getDaysUntilPayDay(config.payDay);
+
+            // UI updates
+            const statusEl = document.getElementById('status');
+            statusEl.className = isActive ? 'status-pill active' : 'status-pill idle';
+            document.getElementById('statusText').textContent = statusText;
+
+            const moneyEl = document.getElementById('money');
+            moneyEl.textContent = `¥${todayEarned.toFixed(4)}`;
+            moneyEl.className = isActive ? 'money-big' : 'money-big dimmed';
+
+            document.getElementById('progressFill').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = `${progress.toFixed(1)}%`;
+
+            document.getElementById('todayTotal').textContent = `¥${todayEarned.toFixed(0)}`;
+            const remain = todayIsWorkday ? Math.max(0, dailySalary - todayEarned) : 0;
+            document.getElementById('todayDetail').textContent = todayIsWorkday ? `还剩 ¥${remain.toFixed(0)}` : '休息日';
+
+            document.getElementById('monthlyAmount').textContent = `¥${monthlyTotal.toFixed(0)}`;
+            document.getElementById('monthlyDetail').textContent = `${workedDays}/${workdays} 工作日`;
+
+            document.getElementById('yearlyAmount').textContent = `¥${(yearlyTotal/10000).toFixed(1)}万`;
+            document.getElementById('yearlyDetail').textContent = `含13薪`;
+
+            document.getElementById('payDayCount').textContent = daysUntil === 0 ? '今天!' : `${daysUntil}天`;
+            document.getElementById('payDayDetail').textContent = `每月${config.payDay}号`;
+        }
+
+        window.onload = function() {
+            const saved = localStorage.getItem('moneyConfig');
+            if (saved) {
+                const c = JSON.parse(saved);
+                document.getElementById('salary').value = c.salary || '';
+                document.getElementById('hours').value = c.hours || 8;
+                document.getElementById('startTime').value = c.startTime || '09:00';
+                document.getElementById('housingFund').value = c.housingFund || '';
+                document.getElementById('mealAllowance').value = c.mealAllowance || '';
+                document.getElementById('bonus13').value = c.bonus13 || '';
+                document.getElementById('payDay').value = c.payDay || '';
+                if (c.salary > 0) onSettingsChange();
+            }
+        };
+    </script>
+</body>
+</html>
