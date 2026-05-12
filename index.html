@@ -146,13 +146,31 @@
             margin-bottom: 20px;
         }
 
-        .status-pill.active { background: #e8f8e8; color: #1a7a1a; }
+        .status-pill.active { 
+            background: #e8f8e8; 
+            color: #1a7a1a;
+            animation: pulse 2s ease-in-out infinite;
+        }
         .status-pill.idle { background: #f0f0f0; color: #86868b; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
 
         .status-dot {
             width: 5px; height: 5px;
             border-radius: 50%;
             background: currentColor;
+        }
+
+        .status-dot.blink {
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
         }
 
         .money-big {
@@ -163,6 +181,11 @@
             font-variant-numeric: tabular-nums;
             line-height: 1;
             margin-bottom: 6px;
+            transition: transform 0.1s ease;
+        }
+
+        .money-big.bump {
+            transform: scale(1.02);
         }
 
         .money-big.dimmed { opacity: 0.2; }
@@ -199,6 +222,52 @@
             background: #0071e3;
             border-radius: 3px;
             transition: width 1s linear;
+        }
+
+        /* Circular ring */
+        .ring-wrap {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin-bottom: 8px;
+        }
+
+        .ring-svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .ring-bg {
+            fill: none;
+            stroke: #f0f0f0;
+            stroke-width: 8;
+        }
+
+        .ring-fill {
+            fill: none;
+            stroke: #0071e3;
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 326.73;
+            stroke-dashoffset: 326.73;
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        .ring-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            font-weight: 700;
+            color: #1d1d1f;
+        }
+
+        .ring-label {
+            font-size: 12px;
+            color: #86868b;
+            margin-bottom: 0;
         }
 
         /* Right bottom: Stats row */
@@ -363,36 +432,37 @@
                 </div>
                 <div class="money-big dimmed" id="money">¥0.0000</div>
                 <div class="money-sub">今日实时收入</div>
-                <div class="progress-bar-wrap">
-                    <div class="progress-top">
-                        <span>今日进度</span>
-                        <span id="progressText">0.0%</span>
-                    </div>
-                    <div class="progress-track">
-                        <div class="progress-fill" id="progressFill" style="width:0%"></div>
-                    </div>
+
+                <!-- Circular progress -->
+                <div class="ring-wrap">
+                    <svg class="ring-svg" viewBox="0 0 120 120">
+                        <circle class="ring-bg" cx="60" cy="60" r="52" />
+                        <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="52" />
+                    </svg>
+                    <div class="ring-text" id="progressText">0%</div>
                 </div>
+                <div class="ring-label">今日工作进度</div>
             </div>
 
             <!-- Right bottom: Stats -->
             <div class="stats-row">
                 <div class="stat-tile">
-                    <div class="tile-label">今日已赚</div>
+                    <div class="tile-label">💰 今日已赚</div>
                     <div class="tile-value" id="todayTotal">¥0</div>
                     <div class="tile-sub" id="todayDetail">--</div>
                 </div>
                 <div class="stat-tile">
-                    <div class="tile-label">当月累计</div>
+                    <div class="tile-label">📊 当月累计</div>
                     <div class="tile-value" id="monthlyAmount">¥0</div>
                     <div class="tile-sub" id="monthlyDetail">--</div>
                 </div>
                 <div class="stat-tile accent">
-                    <div class="tile-label">年度累计</div>
+                    <div class="tile-label">🏆 年度累计</div>
                     <div class="tile-value" id="yearlyAmount">¥0</div>
                     <div class="tile-sub" id="yearlyDetail">--</div>
                 </div>
                 <div class="stat-tile">
-                    <div class="tile-label">距发薪日</div>
+                    <div class="tile-label">📅 距发薪日</div>
                     <div class="tile-value" id="payDayCount">--</div>
                     <div class="tile-sub" id="payDayDetail">--</div>
                 </div>
@@ -540,8 +610,20 @@
             moneyEl.textContent = `¥${todayEarned.toFixed(4)}`;
             moneyEl.className = isActive ? 'money-big' : 'money-big dimmed';
 
-            document.getElementById('progressFill').style.width = `${progress}%`;
-            document.getElementById('progressText').textContent = `${progress.toFixed(1)}%`;
+            // Bump animation on value change
+            if (isActive) {
+                moneyEl.classList.add('bump');
+                setTimeout(() => moneyEl.classList.remove('bump'), 100);
+            }
+
+            // Ring progress
+            const circumference = 326.73;
+            const offset = circumference - (progress / 100) * circumference;
+            document.getElementById('ringFill').style.strokeDashoffset = offset;
+            document.getElementById('progressText').textContent = `${Math.round(progress)}%`;
+
+            // Status dot blink
+            document.querySelector('.status-dot').className = isActive ? 'status-dot blink' : 'status-dot';
 
             document.getElementById('todayTotal').textContent = `¥${todayEarned.toFixed(0)}`;
             const remain = todayIsWorkday ? Math.max(0, dailySalary - todayEarned) : 0;
